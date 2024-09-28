@@ -3,7 +3,7 @@ import random
 import logging
 import argparse
 from typing import List, Dict, Set
-
+import datetime
 # Set the StarCraft II game path
 os.environ["SC2PATH"] = "W:/StarCraft II"
 
@@ -22,6 +22,7 @@ from sc2.position import Point2
 logging.basicConfig(filename='bot_output.txt', level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s', filemode='w')
 logger = logging.getLogger()
+current_time = datetime.datetime.now()
 
 class ImprovedTerranBot(BotAI):
     def __init__(self):
@@ -292,19 +293,22 @@ class ImprovedTerranBot(BotAI):
             if self.can_afford(UnitTypeId.ENGINEERINGBAY):
                 await self.build(UnitTypeId.ENGINEERINGBAY, near=self.townhalls.first.position.towards(self.game_info.map_center, 5))
                 logger.info("Building Engineering Bay")
-def run_game_with_bot(map_name, opponent_race, difficulty, realtime=False):
-        result = run_game(
-            maps.get(map_name),
-            [
-                Bot(Race.Terran, ImprovedTerranBot()),
-                Computer(opponent_race, difficulty)
-            ],
-            realtime=realtime,
-            save_replay_as="my_bot_game.SC2Replay"
-        )
-        return result
 
-def run_benchmark(num_matches, map_name, opponent_race, difficulty):
+def run_game_with_bot(map_name, opponent_races, difficulties, num_opponents, realtime=False):
+    players = [Bot(Race.Terran, ImprovedTerranBot())]
+    
+    for i in range(num_opponents):
+        players.append(Computer(opponent_races[i], difficulties[i]))
+    
+    result = run_game(
+        maps.get(map_name),
+        players,
+        realtime=realtime,
+        save_replay_as=f"my_bot_game_{current_time.strftime('%Y%m%d_%H%M%S')}.SC2Replay"
+    )
+    return result
+
+def run_benchmark(num_matches, map_name, opponent_races, difficulties, num_opponents):
     results = {
         'wins': 0,
         'losses': 0,
@@ -315,16 +319,20 @@ def run_benchmark(num_matches, map_name, opponent_race, difficulty):
         logger.info(f"Starting match {match+1} of {num_matches}")
 
         try:
-            result = run_game_with_bot(map_name, opponent_race, difficulty)
+            result = run_game_with_bot(map_name, opponent_races, difficulties, num_opponents)
 
-            if result[0] == 'Victory':
+            if result is None:
+                logger.error(f"Match {match+1} resulted in None. Skipping this match.")
+                continue
+
+            match_result, match_time = result
+            if match_result == 'Victory':
                 results['wins'] += 1
             else:
                 results['losses'] += 1
 
-            match_time = result[1]
             results['total_time'] += match_time
-            logger.info(f"Match {match+1} result: {result[0]}, Duration: {match_time}")
+            logger.info(f"Match {match+1} result: {match_result}, Duration: {match_time}")
 
         except Exception as e:
             logger.error(f"Error in match {match+1}: {str(e)}")
@@ -337,18 +345,26 @@ def run_benchmark(num_matches, map_name, opponent_race, difficulty):
 def main():
     parser = argparse.ArgumentParser(description="Run ImprovedTerranBot in StarCraft II")
     parser.add_argument("--run-matches", type=int, help="Number of matches to run for benchmarking")
-    parser.add_argument("--difficulty", type=str, choices=['Easy', 'Medium', 'Hard', 'VeryHard', 'CheatVision', 'CheatMoney', 'CheatInsane'], default='Hard', help="AI difficulty")
-    parser.add_argument("--race", type=str, choices=['Terran', 'Zerg', 'Protoss', 'Random'], default='Zerg', help="Opponent race")
+    parser.add_argument("--num-opponents", type=int, default=1, help="Number of opponents")
+    parser.add_argument("--difficulties", type=str, nargs='+', choices=['Easy', 'Medium', 'Hard', 'VeryHard', 'CheatVision', 'CheatMoney', 'CheatInsane'], default=['Hard'], help="AI difficulties")
+    parser.add_argument("--races", type=str, nargs='+', choices=['Terran', 'Zerg', 'Protoss', 'Random'], default=['Random'], help="Opponent races")
     parser.add_argument("--map", type=str, default="AcropolisLE", help="Map name")
     args = parser.parse_args()
 
-    difficulty = getattr(Difficulty, args.difficulty)
-    race = getattr(Race, args.race)
+    # Ensure the number of difficulties and races match the number of opponents
+    if len(args.difficulties) < args.num_opponents:
+        args.difficulties *= args.num_opponents
+    if len(args.races) < args.num_opponents:
+        args.races *= args.num_opponents
+    
+    difficulties = [getattr(Difficulty, diff) for diff in args.difficulties[:args.num_opponents]]
+    races = [getattr(Race, race) for race in args.races[:args.num_opponents]]
 
     if args.run_matches:
-        run_benchmark(args.run_matches, args.map, race, difficulty)
+        run_benchmark(args.run_matches, args.map, races, difficulties, args.num_opponents)
     else:
-        run_game_with_bot(args.map, race, difficulty, realtime=False)
+        result = run_game_with_bot(args.map, races, difficulties, args.num_opponents, realtime=False)
+        print(f"Game result: {result}")
 
 if __name__ == "__main__":
     main()

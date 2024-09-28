@@ -2,7 +2,7 @@
 
 ![ImprovedTerranBot Logo](https://i.ibb.co/4tkNJLj/2f08e8d2-76f9-448f-9445-cb7fd483b657.webp)
 
-This repository contains the code for **ImprovedTerranBot**, a custom bot for StarCraft II using the [python-sc2](https://github.com/BurnySc2/python-sc2) library. The bot is designed to manage the Terran faction, build structures, expand, and control an army to defeat a computer opponent.
+This repository contains the code for **ImprovedTerranBot**, a custom bot for StarCraft II using the [python-sc2](https://github.com/BurnySc2/python-sc2) library. The bot is designed to manage the Terran faction, build structures, expand, and control an army to defeat computer opponents.
 
 ## Features
 
@@ -13,6 +13,7 @@ This repository contains the code for **ImprovedTerranBot**, a custom bot for St
 - **Resource Management**: The bot manages idle workers and expands to new bases when required.
 - **Upgrade Management**: The bot researches infantry upgrades to improve the effectiveness of its army.
 - **Benchmark Mode**: Run multiple matches to benchmark the bot's performance.
+- **Multiple Opponents**: The bot can now play against multiple AI opponents in a single match.
 
 ## Prerequisites
 
@@ -38,20 +39,46 @@ To run a single match with default settings:
 python bot_script.py
 ```
 
+To run a single match with multiple opponents and custom settings:
+
+```
+python bot_script.py --num-opponents 3 --difficulties Hard Medium Easy --races Random Zerg Protoss --map AcropolisLE
+```
+
 ### Benchmark Mode
 
 To run multiple matches for benchmarking, use the following command-line arguments:
 
 ```
-python bot_script.py --run-matches 20 --difficulty Hard --race Zerg --map AcropolisLE
+python bot_script.py --run-matches 20 --num-opponents 2 --difficulties Hard Medium --races Zerg Protoss --map AcropolisLE
 ```
 
 #### Command-line Arguments
 
 - `--run-matches`: Number of matches to run for benchmarking
-- `--difficulty`: AI difficulty (Easy, Medium, Hard, VeryHard, CheatVision, CheatMoney, CheatInsane)
-- `--race`: Opponent race (Terran, Zerg, Protoss, Random)
+- `--num-opponents`: Number of AI opponents (default is 1)
+- `--difficulties`: AI difficulties (Easy, Medium, Hard, VeryHard, CheatVision, CheatMoney, CheatInsane)
+  - Specify one difficulty per opponent, or the last specified difficulty will be used for remaining opponents
+- `--races`: Opponent races (Terran, Zerg, Protoss, Random)
+  - Specify one race per opponent, or the last specified race will be used for remaining opponents
 - `--map`: Map name (e.g., AcropolisLE)
+
+Examples:
+
+1. Run a single match against 3 opponents with different difficulties and races:
+   ```
+   python bot_script.py --num-opponents 3 --difficulties Hard Medium Easy --races Random Zerg Protoss --map AcropolisLE
+   ```
+
+2. Run 10 benchmark matches against 2 opponents, both set to Hard difficulty and Random race:
+   ```
+   python bot_script.py --run-matches 10 --num-opponents 2 --difficulties Hard --races Random --map AcropolisLE
+   ```
+
+3. Run a single match against 4 opponents, with the last two using the same difficulty and race:
+   ```
+   python bot_script.py --num-opponents 4 --difficulties VeryHard Hard Medium --races Terran Zerg Protoss --map AcropolisLE
+   ```
 
 ## Bot Overview
 
