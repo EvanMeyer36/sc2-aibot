@@ -1,6 +1,7 @@
 import os
 import random
 import logging
+import argparse
 from typing import List, Dict, Set
 
 # Set the StarCraft II game path
@@ -291,18 +292,63 @@ class ImprovedTerranBot(BotAI):
             if self.can_afford(UnitTypeId.ENGINEERINGBAY):
                 await self.build(UnitTypeId.ENGINEERINGBAY, near=self.townhalls.first.position.towards(self.game_info.map_center, 5))
                 logger.info("Building Engineering Bay")
+def run_game_with_bot(map_name, opponent_race, difficulty, realtime=False):
+        result = run_game(
+            maps.get(map_name),
+            [
+                Bot(Race.Terran, ImprovedTerranBot()),
+                Computer(opponent_race, difficulty)
+            ],
+            realtime=realtime,
+            save_replay_as="my_bot_game.SC2Replay"
+        )
+        return result
+
+def run_benchmark(num_matches, map_name, opponent_race, difficulty):
+    results = {
+        'wins': 0,
+        'losses': 0,
+        'total_time': 0
+    }
+
+    for match in range(num_matches):
+        logger.info(f"Starting match {match+1} of {num_matches}")
+
+        try:
+            result = run_game_with_bot(map_name, opponent_race, difficulty)
+
+            if result[0] == 'Victory':
+                results['wins'] += 1
+            else:
+                results['losses'] += 1
+
+            match_time = result[1]
+            results['total_time'] += match_time
+            logger.info(f"Match {match+1} result: {result[0]}, Duration: {match_time}")
+
+        except Exception as e:
+            logger.error(f"Error in match {match+1}: {str(e)}")
+
+    avg_time = results['total_time'] / num_matches if num_matches > 0 else 0
+    logger.info(f"Benchmark completed. Wins: {results['wins']}, Losses: {results['losses']}, Avg Time: {avg_time:.2f}")
+    print(f"Benchmark results: Wins: {results['wins']}, Losses: {results['losses']}, Avg Time: {avg_time:.2f}")
 
 # Run the game
 def main():
-    run_game(
-        maps.get("(4) Twilight Fortress"),
-        [
-            Bot(Race.Terran, ImprovedTerranBot()),
-            Computer(Race.Zerg, Difficulty.Hard)
-        ],
-        realtime=False,
-        save_replay_as="my_bot_game.SC2Replay"       
-    )
+    parser = argparse.ArgumentParser(description="Run ImprovedTerranBot in StarCraft II")
+    parser.add_argument("--run-matches", type=int, help="Number of matches to run for benchmarking")
+    parser.add_argument("--difficulty", type=str, choices=['Easy', 'Medium', 'Hard', 'VeryHard', 'CheatVision', 'CheatMoney', 'CheatInsane'], default='Hard', help="AI difficulty")
+    parser.add_argument("--race", type=str, choices=['Terran', 'Zerg', 'Protoss', 'Random'], default='Zerg', help="Opponent race")
+    parser.add_argument("--map", type=str, default="AcropolisLE", help="Map name")
+    args = parser.parse_args()
+
+    difficulty = getattr(Difficulty, args.difficulty)
+    race = getattr(Race, args.race)
+
+    if args.run_matches:
+        run_benchmark(args.run_matches, args.map, race, difficulty)
+    else:
+        run_game_with_bot(args.map, race, difficulty, realtime=False)
 
 if __name__ == "__main__":
     main()
